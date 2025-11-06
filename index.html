@@ -14,7 +14,7 @@
       <!-- マーカー -->
       <a-marker preset="hiro" id="markerHiro"></a-marker>
 
-      <!-- モデル（マーカーの外に置く！） -->
+      <!-- モデル（マーカー外に配置） -->
       <a-entity 
         id="model"
         gltf-model="url(chaei.glb)"
@@ -32,23 +32,25 @@
       const model = document.querySelector('#model');
       let markerVisible = false;
 
-      // マーカー検出・ロストイベント
+      // マーカーの検出イベント
       marker.addEventListener('markerFound', () => markerVisible = true);
       marker.addEventListener('markerLost', () => markerVisible = false);
 
-      // モデルをマーカー位置に追従させる
+      // 位置追従コンポーネント
       AFRAME.registerComponent('follow-marker', {
         tick: function () {
           if (markerVisible) {
-            // マーカーの位置・回転をコピー
+            // --- マーカーの位置と回転をコピー ---
             model.object3D.position.copy(marker.object3D.position);
             model.object3D.quaternion.copy(marker.object3D.quaternion);
+
+            // --- 位置補正（必要に応じて調整） ---
+            // マーカー中心より少し上や前にずれている場合など
+            model.object3D.position.add(new THREE.Vector3(0, 0.05, 0)); // ←Y方向に少し上げる
           }
-          // markerVisible が false でも model は消さない！
         }
       });
 
-      // カスタムコンポーネントをシーンにつける
       document.querySelector('a-scene').setAttribute('follow-marker', '');
     </script>
   </body>
