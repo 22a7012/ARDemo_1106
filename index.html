@@ -2,74 +2,69 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>A-Frame + AR.js Test</title>
+    <title>Marker Hold AR (Static)</title>
+
     <!-- A-Frame本体 -->
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+
     <!-- AR.js拡張 -->
     <script src="https://cdn.rawgit.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
   </head>
-
   <body style="margin: 0; overflow: hidden;">
     <a-scene embedded arjs>
       <!-- マーカー -->
-      <a-marker preset="hiro" id="markerHiro"></a-marker>
-
-      <!-- モデル -->
-      <a-entity 
-        id="model"
-        gltf-model="url(chaei.glb)"
-        position="0 0 0"
-        rotation="0 180 0"
-        scale="0.5 0.5 0.5">
-      </a-entity>
+      <a-marker preset="hiro" id="hiroMarker">
+        <!-- モデル（最初はマーカー上） -->
+        <a-entity
+          id="myModel"
+          gltf-model="url(chaei.glb)"
+          scale="0.5 0.5 0.5"
+          position="0 0 0"
+          rotation="0 180 0">
+        </a-entity>
+      </a-marker>
 
       <!-- カメラ -->
       <a-entity camera></a-entity>
     </a-scene>
 
     <script>
-      const marker = document.querySelector('#markerHiro');
-      const model = document.querySelector('#model');
+      const marker = document.querySelector("#hiroMarker");
+      const model = document.querySelector("#myModel");
 
-      // 一時変数
-      const tempPos = new THREE.Vector3();
-      const tempQuat = new THREE.Quaternion();
-      const lastPos = new THREE.Vector3();
-      const lastQuat = new THREE.Quaternion();
+      let hasPlaced = false; // 一度でもマーカーが見つかったか
+      let savedPosition = new THREE.Vector3();
+      let savedRotation = new THREE.Euler();
 
-      let markerVisible = false;
-
-      marker.addEventListener('markerFound', () => {
-        markerVisible = true;
-      });
-
-      marker.addEventListener('markerLost', () => {
-        markerVisible = false;
-        // マーカーが見えなくなった瞬間の座標・回転を保存
-        model.object3D.position.copy(lastPos);
-        model.object3D.quaternion.copy(lastQuat);
-      });
-
-      // 追従処理
-      AFRAME.registerComponent('follow-marker', {
-        tick: function () {
-          if (markerVisible) {
-            // マーカーの現在座標を取得して保存
-            marker.object3D.getWorldPosition(tempPos);
-            marker.object3D.getWorldQuaternion(tempQuat);
-
-            model.object3D.position.copy(tempPos);
-            model.object3D.quaternion.copy(tempQuat);
-
-            // 「最後に見えた座標」を更新しておく
-            lastPos.copy(tempPos);
-            lastQuat.copy(tempQuat);
-          }
-          // markerVisible === false のときは lastPos/lastQuat を維持（＝固定）
+      // マーカー検出時
+      marker.addEventListener("markerFound", () => {
+        console.log("📍 Marker detected!");
+        if (!hasPlaced) {
+          model.object3D.visible = true;
         }
       });
 
-      document.querySelector('a-scene').setAttribute('follow-marker', '');
+      // マーカーが見えなくなった時
+      marker.addEventListener("markerLost", () => {
+        console.log("❌ Marker lost!");
+        if (!hasPlaced) {
+          // モデルの現在位置をワールド座標で保存
+          model.object3D.getWorldPosition(savedPosition);
+          model.object3D.getWorldRotation(savedRotation);
+
+          // モデルをシーン直下に移動
+          marker.sceneEl.appendChild(model);
+
+          // 保存した座標を適用
+          model.object3D.position.copy(savedPosition);
+          model.object3D.rotation.copy(savedRotation);
+
+          // 今後は固定
+          hasPlaced = true;
+
+          console.log("✅ Model fixed in place!");
+        }
+      });
     </script>
   </body>
 </html>
