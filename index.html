@@ -11,55 +11,45 @@
 
   <body style="margin: 0; overflow: hidden;">
     <a-scene embedded arjs>
-      <!-- マーカー (Hiroマーカー使用) -->
-      <a-marker preset="hiro" id="hiroMarker">
-        <a-entity 
-          id="model"
-          gltf-model="url(chaei.glb)"
-          position="0 0 0"
-          rotation="0 180 0"
-          scale="0.5 0.5 0.5">
-        </a-entity>
-      </a-marker>
+      <!-- マーカー -->
+      <a-marker preset="hiro" id="markerHiro"></a-marker>
+
+      <!-- モデル（マーカーの外に置く！） -->
+      <a-entity 
+        id="model"
+        gltf-model="url(chaei.glb)"
+        position="0 0 0"
+        rotation="0 180 0"
+        scale="0.5 0.5 0.5">
+      </a-entity>
 
       <!-- カメラ -->
       <a-entity camera></a-entity>
     </a-scene>
 
     <script>
-      // === ① 対象取得 ===
-      const marker = document.querySelector('#hiroMarker');
+      const marker = document.querySelector('#markerHiro');
       const model = document.querySelector('#model');
+      let markerVisible = false;
 
-      // === ② マーカーが見失われたときの処理 ===
-      marker.addEventListener('markerLost', () => {
-        // ワールド座標と回転を取得
-        const worldPos = new THREE.Vector3();
-        model.object3D.getWorldPosition(worldPos);
-        const worldRot = new THREE.Euler();
-        model.object3D.getWorldRotation(worldRot);
+      // マーカー検出・ロストイベント
+      marker.addEventListener('markerFound', () => markerVisible = true);
+      marker.addEventListener('markerLost', () => markerVisible = false);
 
-        // すでにシーン直下にある場合は何もしない
-        if (model.parentElement.tagName.toLowerCase() === 'a-scene') return;
-
-        // ③ マーカーから切り離してシーンに固定
-        const sceneEl = document.querySelector('a-scene');
-        marker.removeChild(model);
-        sceneEl.appendChild(model);
-
-        // ④ 現在の位置・回転を保持
-        model.object3D.position.copy(worldPos);
-        model.object3D.rotation.copy(worldRot);
-
-        console.log('マーカーが外れたため、オブジェクトをシーンに固定しました。');
+      // モデルをマーカー位置に追従させる
+      AFRAME.registerComponent('follow-marker', {
+        tick: function () {
+          if (markerVisible) {
+            // マーカーの位置・回転をコピー
+            model.object3D.position.copy(marker.object3D.position);
+            model.object3D.quaternion.copy(marker.object3D.quaternion);
+          }
+          // markerVisible が false でも model は消さない！
+        }
       });
 
-      // === ⑤ マーカーが再び見つかったとき（必要なら再アタッチも可能）===
-      marker.addEventListener('markerFound', () => {
-        console.log('マーカーが再び見つかりました。');
-        // 必要なら、modelを再びmarkerに戻す処理を書くことも可能
-        // marker.appendChild(model);
-      });
+      // カスタムコンポーネントをシーンにつける
+      document.querySelector('a-scene').setAttribute('follow-marker', '');
     </script>
   </body>
 </html>
