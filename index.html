@@ -1,70 +1,64 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <title>Marker Hold AR (Static)</title>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>AR.js 固定モデルサンプル</title>
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar-nft.min.js"></script>
+</head>
+<body style="margin:0; overflow:hidden;">
 
-    <!-- A-Frame本体 -->
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  <a-scene embedded arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;">
+    
+    <!-- カメラ -->
+    <a-entity camera></a-entity>
 
-    <!-- AR.js拡張 -->
-    <script src="https://cdn.rawgit.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-  </head>
-  <body style="margin: 0; overflow: hidden;">
-    <a-scene embedded arjs>
-      <!-- マーカー -->
-      <a-marker preset="hiro" id="hiroMarker">
-        <!-- モデル（最初はマーカー上） -->
-        <a-entity
-          id="myModel"
-          gltf-model="url(chaei.glb)"
-          scale="0.5 0.5 0.5"
-          position="0 0 0"
-          rotation="0 180 0">
-        </a-entity>
-      </a-marker>
+    <!-- マーカー -->
+    <a-marker type="pattern" url="https://raw.githubusercontent.com/AR-js-org/AR.js/master/three.js/data/patt.hiro" id="hiroMarker">
+      <a-entity id="model" gltf-model="#chaei" scale="0.5 0.5 0.5" visible="false"></a-entity>
+    </a-marker>
 
-      <!-- カメラ -->
-      <a-entity camera></a-entity>
-    </a-scene>
+    <!-- モデルをプリロード -->
+    <a-assets>
+      <a-asset-item id="chaei" src="./assets/chaei.glb"></a-asset-item>
+    </a-assets>
 
+    <!-- マーカー検出後の固定処理 -->
     <script>
-      const marker = document.querySelector("#hiroMarker");
-      const model = document.querySelector("#myModel");
-
-      let hasPlaced = false; // 一度でもマーカーが見つかったか
+      let modelEl = null;
+      let fixed = false;
       let savedPosition = new THREE.Vector3();
-      let savedRotation = new THREE.Euler();
+      let savedRotation = new THREE.Quaternion();
 
-      // マーカー検出時
-      marker.addEventListener("markerFound", () => {
-        console.log("📍 Marker detected!");
-        if (!hasPlaced) {
-          model.object3D.visible = true;
-        }
-      });
+      document.addEventListener('DOMContentLoaded', () => {
+        modelEl = document.getElementById('model');
+        const marker = document.getElementById('hiroMarker');
 
-      // マーカーが見えなくなった時
-      marker.addEventListener("markerLost", () => {
-        console.log("❌ Marker lost!");
-        if (!hasPlaced) {
-          // モデルの現在位置をワールド座標で保存
-          model.object3D.getWorldPosition(savedPosition);
-          model.object3D.getWorldRotation(savedRotation);
+        // マーカーが見えたとき
+        marker.addEventListener('markerFound', () => {
+          if (!fixed) {
+            modelEl.setAttribute('visible', true);
 
-          // モデルをシーン直下に移動
-          marker.sceneEl.appendChild(model);
+            // 現在の世界座標・回転を保存
+            const threeObj = modelEl.object3D;
+            savedPosition.copy(threeObj.getWorldPosition(new THREE.Vector3()));
+            savedRotation.copy(threeObj.getWorldQuaternion(new THREE.Quaternion()));
+            fixed = true;
+          }
+        });
 
-          // 保存した座標を適用
-          model.object3D.position.copy(savedPosition);
-          model.object3D.rotation.copy(savedRotation);
-
-          // 今後は固定
-          hasPlaced = true;
-
-          console.log("✅ Model fixed in place!");
-        }
+        // 毎フレーム、固定位置に維持
+        modelEl.sceneEl.addEventListener('renderstart', () => {
+          modelEl.sceneEl.renderer.setAnimationLoop(() => {
+            if (fixed) {
+              modelEl.object3D.position.copy(savedPosition);
+              modelEl.object3D.quaternion.copy(savedRotation);
+            }
+          });
+        });
       });
     </script>
-  </body>
+
+  </a-scene>
+</body>
 </html>
