@@ -12,8 +12,9 @@
   <body style="margin: 0; overflow: hidden;">
     <a-scene embedded arjs>
       <!-- マーカー (Hiroマーカー使用) -->
-      <a-marker preset="hiro">
+      <a-marker preset="hiro" id="hiroMarker">
         <a-entity 
+          id="model"
           gltf-model="url(chaei.glb)"
           position="0 0 0"
           rotation="0 180 0"
@@ -24,32 +25,41 @@
       <!-- カメラ -->
       <a-entity camera></a-entity>
     </a-scene>
-<script>
-      const marker = document.querySelector('a-marker');
-      const model = marker.querySelector('a-entity');
-      let markerVisible = false;
 
-      marker.addEventListener('markerFound', () => {
-        markerVisible = true;
-      });
+    <script>
+      // === ① 対象取得 ===
+      const marker = document.querySelector('#hiroMarker');
+      const model = document.querySelector('#model');
 
+      // === ② マーカーが見失われたときの処理 ===
       marker.addEventListener('markerLost', () => {
-        markerVisible = false;
+        // ワールド座標と回転を取得
+        const worldPos = new THREE.Vector3();
+        model.object3D.getWorldPosition(worldPos);
+        const worldRot = new THREE.Euler();
+        model.object3D.getWorldRotation(worldRot);
+
+        // すでにシーン直下にある場合は何もしない
+        if (model.parentElement.tagName.toLowerCase() === 'a-scene') return;
+
+        // ③ マーカーから切り離してシーンに固定
+        const sceneEl = document.querySelector('a-scene');
+        marker.removeChild(model);
+        sceneEl.appendChild(model);
+
+        // ④ 現在の位置・回転を保持
+        model.object3D.position.copy(worldPos);
+        model.object3D.rotation.copy(worldRot);
+
+        console.log('マーカーが外れたため、オブジェクトをシーンに固定しました。');
       });
 
-      // マーカーが見えなくなっても非表示にしない
-      AFRAME.registerComponent('keep-visible', {
-        tick: function () {
-          if (!markerVisible) {
-            model.object3D.visible = true;
-          }
-        }
+      // === ⑤ マーカーが再び見つかったとき（必要なら再アタッチも可能）===
+      marker.addEventListener('markerFound', () => {
+        console.log('マーカーが再び見つかりました。');
+        // 必要なら、modelを再びmarkerに戻す処理を書くことも可能
+        // marker.appendChild(model);
       });
-
-      model.setAttribute('keep-visible', '');
     </script>
-    
   </body>
 </html>
-
-
