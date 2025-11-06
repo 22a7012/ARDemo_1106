@@ -14,7 +14,7 @@
       <!-- マーカー -->
       <a-marker preset="hiro" id="markerHiro"></a-marker>
 
-      <!-- モデル（マーカー外に配置） -->
+      <!-- モデル -->
       <a-entity 
         id="model"
         gltf-model="url(chaei.glb)"
@@ -30,24 +30,42 @@
     <script>
       const marker = document.querySelector('#markerHiro');
       const model = document.querySelector('#model');
+
+      // 一時変数
+      const tempPos = new THREE.Vector3();
+      const tempQuat = new THREE.Quaternion();
+      const lastPos = new THREE.Vector3();
+      const lastQuat = new THREE.Quaternion();
+
       let markerVisible = false;
 
-      // マーカーの検出イベント
-      marker.addEventListener('markerFound', () => markerVisible = true);
-      marker.addEventListener('markerLost', () => markerVisible = false);
+      marker.addEventListener('markerFound', () => {
+        markerVisible = true;
+      });
 
-      // 位置追従コンポーネント
+      marker.addEventListener('markerLost', () => {
+        markerVisible = false;
+        // マーカーが見えなくなった瞬間の座標・回転を保存
+        model.object3D.position.copy(lastPos);
+        model.object3D.quaternion.copy(lastQuat);
+      });
+
+      // 追従処理
       AFRAME.registerComponent('follow-marker', {
         tick: function () {
           if (markerVisible) {
-            // --- マーカーの位置と回転をコピー ---
-            model.object3D.position.copy(marker.object3D.position);
-            model.object3D.quaternion.copy(marker.object3D.quaternion);
+            // マーカーの現在座標を取得して保存
+            marker.object3D.getWorldPosition(tempPos);
+            marker.object3D.getWorldQuaternion(tempQuat);
 
-            // --- 位置補正（必要に応じて調整） ---
-            // マーカー中心より少し上や前にずれている場合など
-            model.object3D.position.add(new THREE.Vector3(0, 0.05, 0)); // ←Y方向に少し上げる
+            model.object3D.position.copy(tempPos);
+            model.object3D.quaternion.copy(tempQuat);
+
+            // 「最後に見えた座標」を更新しておく
+            lastPos.copy(tempPos);
+            lastQuat.copy(tempQuat);
           }
+          // markerVisible === false のときは lastPos/lastQuat を維持（＝固定）
         }
       });
 
