@@ -24,6 +24,32 @@
       <!-- カメラ -->
       <a-entity camera></a-entity>
     </a-scene>
+<script>
+      const marker = document.querySelector('a-marker');
+      const model = marker.querySelector('a-entity');
+      let markerVisible = false;
+
+      marker.addEventListener('markerFound', () => {
+        markerVisible = true;
+      });
+
+      marker.addEventListener('markerLost', () => {
+        markerVisible = false;
+      });
+
+      // マーカーが見えなくなっても非表示にしない
+      AFRAME.registerComponent('keep-visible', {
+        tick: function () {
+          if (!markerVisible) {
+            model.object3D.visible = true;
+          }
+        }
+      });
+
+      model.setAttribute('keep-visible', '');
+    </script>
+    
   </body>
 </html>
+
 
